@@ -5,54 +5,52 @@
 //  Created by Виталий Охрименко on 23/04/2019.
 //  Copyright © 2019 kaboo. All rights reserved.
 //
-
 import UIKit
 
 class NewsTableVC: UITableViewController {
     
-    let url = "https://newsapi.org/"
-    let apiKey = "241f88416a024aa4ba2b2472c6693cc4"
-    var pageSize = 10
-    var page = 1
-    
-    var articles = [Article]()
+    private var articles = [Article]()
+    private var presenter = NewsTableVCPresenter(dataService: DataService())
+    let activityInd = UIActivityIndicatorView(style: .gray)
     
     lazy var refresh: UIRefreshControl = {
         let refreshConroll = UIRefreshControl()
         refreshConroll.tintColor = .gray
         refreshConroll.addTarget(self, action: #selector(refreshData), for: .valueChanged)
-        
         return refreshConroll
     }()
     
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupTableView()
-        fetchData()
-        
-    }
-    private func generateUrl(page: Int) -> String {
-        let urlFor = "\(url)v2/top-headlines?country=us&category=business&pageSize=10&\(page)sortBy=publishedAt&apiKey=\(apiKey)"
-        return urlFor
+        self.presenter.attachView(self)
+        self.setupTableView()
+        self.chechInternet()
     }
     
-    private func fetchData() {
-        NetworkManager.fetchNewsData(url: generateUrl(page: page)) { [weak self] (articles) in
-            guard let strongSelf = self else { return }
-            strongSelf.articles = articles
-            DispatchQueue.main.async {
-                strongSelf.tableView.reloadData()
-                strongSelf.refresh.endRefreshing()
-            }
+    
+    private func chechInternet() {
+        if Reachability.isConnectedToNetwork() {
+            self.presenter.fetchData()
+        } else {
+            self.alert()
         }
     }
-    
+    private func alert() {
+            let alert = UIAlertController(title: "Отсутствует подключение к сети", message: "Проверьте настройки сети", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Повторить", style: .default, handler: { _ in
+                self.chechInternet()
+            }))
+            self.present(alert, animated: true, completion: nil)
+    }
+
     @objc private func refreshData() {
         DispatchQueue.global().asyncAfter(deadline: .now() + 2, execute: { [weak self] in
-            guard let strongSelf = self else { return }
-            strongSelf.fetchData()
+            guard let self = self else { return }
+            self.chechInternet()
+            
         })
+        
     }
     
     private func configureCell(cell: NewsTableViewCell, for indexPath: IndexPath) {
@@ -62,26 +60,48 @@ class NewsTableVC: UITableViewController {
     
     
     private func setupTableView() {
+        activityInd.center = view.center
+        self.view.addSubview(activityInd)
         tableView.allowsSelection = true
-        tableView.separatorInset = UIEdgeInsets(top: 0, left: 24, bottom: 0, right: 24)
         tableView.rowHeight = UITableView.automaticDimension
         tableView.tableFooterView = UIView()
         tableView.refreshControl = refresh
     }
     
     @objc private func loadTable() {
-        page += 1
-        NetworkManager.fetchNewsData(url: generateUrl(page: page)) { [weak self] (art) in
-             guard let strongSelf = self else { return }
+
+        DataService.service.fetchNewsData(url: self.presenter.generateUrl(page: 2)) { [weak self] art in
+             guard let self = self else { return }
             DispatchQueue.main.async {
-                let beforeCount = strongSelf.articles.count
-                strongSelf.articles.append(contentsOf: art)
-                let insertIndexes = (beforeCount..<strongSelf.articles.count).map { IndexPath(row: $0, section: 0) }
-                strongSelf.tableView.beginUpdates()
-                strongSelf.tableView.insertRows(at: insertIndexes, with: .left)
-                strongSelf.tableView.endUpdates()
+                let beforeCount = self.articles.count
+                self.articles.append(contentsOf: art)
+                let insertIndexes = (beforeCount..<self.articles.count).map {IndexPath(row: $0, section: 0) }
+                self.tableView.beginUpdates()
+                self.tableView.insertRows(at: insertIndexes, with: .left)
+                self.tableView.endUpdates()
             }
         }
+    }
+}
+
+extension NewsTableVC: TableVCView {
+    
+    func startActivityIndicator() {
+        self.activityInd.startAnimating()
+    }
+    
+    func stopActivityIndicator() {
+        self.activityInd.stopAnimating()
+    }
+    
+    func setArticles(articles: [Article]) {
+        self.articles = articles
+        self.reloadData()
+    }
+    
+    func reloadData() {
+        self.tableView.reloadData()
+        self.refresh.endRefreshing()
     }
 }
 
@@ -108,14 +128,7 @@ extension NewsTableVC {
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        
         performSegue(withIdentifier: "show", sender: self)
-        //        let storyBoard = UIStoryboard(name: "Main", bundle: nil)
-        //        guard let vc = storyBoard.instantiateViewController(withIdentifier: "CardNewsTableVC") as? CardNewsTableVC else { return }
-        //
-        //        vc.article = self.articles[indexPath.row]
-        //
-        //        vc.navigationController?.pushViewController(vc, animated: false)
         
     }
     
@@ -140,29 +153,3 @@ extension NewsTableVC {
         }
     }
 }
-
-//    override func scrollViewDidScroll(_ scrollView: UIScrollView) {
-//        let offsetY = scrollView.contentOffset.y
-//        let contentHeight = scrollView.contentSize.height
-//
-//        if offsetY > contentHeight - scrollView.frame.height {
-//            if !fetchingMore {
-//                beginFetch()
-//            }
-//        }
-//    }
-//
-//    private func beginFetch() {
-//        fetchingMore = true
-//        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-//            self.pageSize += 10
-//            NetworkManager.fetchNewsData(url: self.generateUrl(pageSize: 20), completion: { (articles) in
-//                self.articles.append(contentsOf: articles)
-//                self.fetchingMore = false
-//                DispatchQueue.main.async {
-//                    self.tableView.reloadData()
-//                }
-//            })
-//
-//        }
-//    }

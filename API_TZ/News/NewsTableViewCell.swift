@@ -12,9 +12,8 @@ class NewsTableViewCell: UITableViewCell {
     
     var article: Article? {
         didSet {
-            
             if let title = article?.title, let mainText = article?.content {
-                titleLabel.text = title
+                self.titleLabel.text = title
                 self.mainText.text = mainText
             }
             else {
@@ -30,8 +29,6 @@ class NewsTableViewCell: UITableViewCell {
         }
         
     }
-    
-    
     @IBOutlet weak var titleLabel: UILabel!
     @IBOutlet weak var imageArticle: UIImageView!
     @IBOutlet weak var backView: UIView!
@@ -40,7 +37,7 @@ class NewsTableViewCell: UITableViewCell {
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        setup()
+        self.setup()
         
     }
     
@@ -48,13 +45,13 @@ class NewsTableViewCell: UITableViewCell {
         backView.layer.cornerRadius = 10
     }
     
-    private func updateUI() {
-        guard let imageUrlArticle = article?.urlToImage else { return }
-        NetworkManager.downloadImage(url: imageUrlArticle) { [weak self] (image) in
-            guard let strongSelf = self else { return }
-            strongSelf.imageArticle.image = image
-        }
-    }
+//    private func updateUI() {
+//        guard let imageUrlArticle = article?.urlToImage else { return }
+//        NetworkManager.downloadImage(url: imageUrlArticle) { [weak self] (image) in
+//            guard let strongSelf = self else { return }
+//            strongSelf.imageArticle.image = image
+//        }
+//    }
     
     
     override func setSelected(_ selected: Bool, animated: Bool) {

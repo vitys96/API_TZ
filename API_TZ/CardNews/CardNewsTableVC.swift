@@ -9,42 +9,48 @@
 import UIKit
 
 class CardNewsTableVC: UITableViewController {
+    
     @IBOutlet weak var newsImageView: UIImageView!
     
     var article: Article!
-    
+    fileprivate let presenter = CardNewsTableVCPresenter(dataService: DataService())
     var detailCellArray = [String]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        dataVC()
-        configScreen()
+        
+        self.presenter.attachView(self)
+        self.setupUI()
+        self.dataVC()
     }
     
     private func dataVC() {
-        [article.title, article.urlToImage, article.content].forEach { (eachs) in
+        [article.title, article.urlToImage, article.content].forEach { eachs in
             guard let each = eachs else { return }
-            detailCellArray.append(each)
+            self.detailCellArray.append(each)
         }
     }
     
-    private func configScreen() {
-        tableView.tableFooterView = UIView(frame: CGRect.zero)
-        tableView.rowHeight = UITableView.automaticDimension
+    private func setupUI() {
         guard let imageUrlArticle = article?.urlToImage else { return }
-        NetworkManager.downloadImage(url: imageUrlArticle) { [weak self] (image) in
-            guard let strongSelf = self else { return }
-            strongSelf.newsImageView.image = image
-        }
+        self.presenter.getImageOfNewsCell(url: imageUrlArticle)
+        self.tableView.tableFooterView = UIView(frame: CGRect.zero)
+        self.tableView.rowHeight = UITableView.automaticDimension
     }
-    
-    private func configureCell(cell: CardNewsTableViewCell, for indexParth: IndexPath) {
-        cell.titleText = article.title
-        cell.mainText = article.content
-    }
-    
-    
 }
+
+extension CardNewsTableVC: CardNewsView {
+    
+    func setImages(image: UIImage) {
+        self.newsImageView.image = image
+        self.reloadData()
+    }
+    
+    func reloadData() {
+        self.tableView.reloadData()
+    }
+}
+
 
 extension CardNewsTableVC {
     
@@ -54,9 +60,18 @@ extension CardNewsTableVC {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        guard let cell = tableView.dequeueReusableCell(withIdentifier: "cell") as? CardNewsTableViewCell else { return UITableViewCell(style: .default, reuseIdentifier: "cell")}
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "cell") as? CardNewsTableViewCell else
+        { return UITableViewCell(style: .default, reuseIdentifier: "cell")}
         
-        configureCell(cell: cell, for: indexPath)
+//        configureCell(cell: cell, for: indexPath)
+        if article.content != nil {
+            cell.mainText = article.content
+            cell.titleText = article.title
+        } else {
+            cell.mainText = ""
+            cell.titleText = ""
+        }
+        
         
         return cell
     }
